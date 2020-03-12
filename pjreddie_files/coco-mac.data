@@ -1,0 +1,4 @@
+classes= 80
+train  = /Users/youzunzhi/pro/datasets/coco/trainvalno5k.txt
+valid  = /Users/youzunzhi/pro/datasets/coco/5k.txt
+names = data/coco.names

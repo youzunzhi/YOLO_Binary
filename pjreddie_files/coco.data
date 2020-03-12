@@ -1,0 +1,4 @@
+classes= 80
+train  = /work/u2263506/coco/trainvalno5k.txt
+valid  = /work/u2263506/coco/5k.txt
+names = ./data/coco.names
