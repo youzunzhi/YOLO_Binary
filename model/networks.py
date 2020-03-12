@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import torch.nn as nn
-from model.modules import ReorgLayer, RegionLayer, MaxPoolStride1
+from model.modules import ReorgLayer, RegionLayer, MaxPoolStride1, BinarizeConv2d
 
 
 class YOLOv2Network(nn.Module):
@@ -121,18 +121,31 @@ class YOLOv2Network(nn.Module):
                 # pad = int(layer_def["pad"])
                 pad = (kernel_size - 1) // 2
                 filters = int(layer_def["filters"])
-                activation_type = layer_def["activation"]
-                layer.add_module(
-                    f"conv_{layer_i}",
-                    nn.Conv2d(
-                        in_channels=filter_num_list[-1],
-                        out_channels=filters,
-                        kernel_size=kernel_size,
-                        stride=stride,
-                        padding=pad,
-                        bias=not is_batch_normalize,
-                    ),
-                )
+                is_binary = int(layer_def["binary"])
+                if is_binary:
+                    layer.add_module(
+                        f"bconv_{layer_i}",
+                        BinarizeConv2d(
+                            in_channels=filter_num_list[-1],
+                            out_channels=filters,
+                            kernel_size=kernel_size,
+                            stride=stride,
+                            padding=pad,
+                            bias=not is_batch_normalize,
+                        ),
+                    )
+                else:
+                    layer.add_module(
+                        f"conv_{layer_i}",
+                        nn.Conv2d(
+                            in_channels=filter_num_list[-1],
+                            out_channels=filters,
+                            kernel_size=kernel_size,
+                            stride=stride,
+                            padding=pad,
+                            bias=not is_batch_normalize,
+                        ),
+                    )
                 if is_batch_normalize:
                     layer.add_module(
                         f"batchnorm_{layer_i}",
@@ -187,6 +200,7 @@ class YOLOv2Network(nn.Module):
                 layer_defs[-1]['type'] = line[1:-1].rstrip()
                 if layer_defs[-1]['type'] == 'convolutional':
                     layer_defs[-1]['batch_normalize'] = 0
+                    layer_defs[-1]['binary'] = 0
             else:
                 key, value = line.split("=")
                 value = value.strip()
