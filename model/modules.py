@@ -5,11 +5,11 @@ import torch.nn.functional as F
 from utils.computation import bbox_iou, bbox_wh_iou
 
 
-def Binarize(tensor,quant_mode='det'):
-    if quant_mode=='det':
+def Binarize(tensor, quant_mode='det'):
+    if quant_mode == 'det':
         return tensor.sign()
     else:
-        return tensor.add_(1).div_(2).add_(torch.rand(tensor.size()).add(-0.5)).clamp_(0,1).round().mul_(2).add_(-1)
+        return tensor.add_(1).div_(2).add_(torch.rand(tensor.size()).add(-0.5)).clamp_(0, 1).round().mul_(2).add_(-1)
 
 
 class BinarizeConv2d(nn.Conv2d):
@@ -17,19 +17,18 @@ class BinarizeConv2d(nn.Conv2d):
     def __init__(self, *kargs, **kwargs):
         super(BinarizeConv2d, self).__init__(*kargs, **kwargs)
 
-
     def forward(self, input):
         if input.size(1) != 3:
             input.data = Binarize(input.data)
-        if not hasattr(self.weight,'org'):
-            self.weight.org=self.weight.data.clone()
-        self.weight.data=Binarize(self.weight.org)
+        if not hasattr(self.weight, 'org'):
+            self.weight.org = self.weight.data.clone()
+        self.weight.data = Binarize(self.weight.org)
 
         out = nn.functional.conv2d(input, self.weight, None, self.stride,
                                    self.padding, self.dilation, self.groups)
 
         if not self.bias is None:
-            self.bias.org=self.bias.data.clone()
+            self.bias.org = self.bias.data.clone()
             out += self.bias.view(1, -1, 1, 1).expand_as(out)
 
         return out
@@ -97,8 +96,8 @@ class RegionLayer(nn.Module):
         :param seen:
         :return:
         """
-        num_samples = x.size(0)     # B == num_sample
-        grid_size = x.size(2)       # H == W == grid_size
+        num_samples = x.size(0)  # B == num_sample
+        grid_size = x.size(2)  # H == W == grid_size
 
         torch_byte_tensor = torch.cuda.ByteTensor if self.use_cuda else torch.ByteTensor
         torch_float_tensor = torch.cuda.FloatTensor if self.use_cuda else torch.FloatTensor
@@ -119,10 +118,12 @@ class RegionLayer(nn.Module):
         # make a (B, A, H, W, 4) shaped tensor to contain 4 coords of the pred_box, related to grid size
         pred_coords_grid_size = torch_float_tensor(num_samples, self.num_anchors, grid_size, grid_size, 4)
         pred_coords_grid_size[..., 0] = torch.sigmoid(pred_tx) + torch.arange(grid_size).repeat(grid_size, 1).view(
-            [1, 1, grid_size, grid_size]).float().cuda() if self.use_cuda else torch.sigmoid(pred_tx) + torch.arange(grid_size).repeat(grid_size, 1).view(
+            [1, 1, grid_size, grid_size]).float().cuda() if self.use_cuda else torch.sigmoid(pred_tx) + torch.arange(
+            grid_size).repeat(grid_size, 1).view(
             [1, 1, grid_size, grid_size]).float()
         pred_coords_grid_size[..., 1] = torch.sigmoid(pred_ty) + torch.arange(grid_size).repeat(grid_size, 1).t().view(
-            [1, 1, grid_size, grid_size]).float().cuda() if self.use_cuda else torch.sigmoid(pred_ty) + torch.arange(grid_size).repeat(grid_size, 1).t().view(
+            [1, 1, grid_size, grid_size]).float().cuda() if self.use_cuda else torch.sigmoid(pred_ty) + torch.arange(
+            grid_size).repeat(grid_size, 1).t().view(
             [1, 1, grid_size, grid_size]).float()
         pred_coords_grid_size[..., 2] = torch.exp(pred_tw) * self.anchors[:, 0].view(1, self.num_anchors, 1, 1)
         pred_coords_grid_size[..., 3] = torch.exp(pred_th) * self.anchors[:, 1].view(1, self.num_anchors, 1, 1)
@@ -145,7 +146,8 @@ class RegionLayer(nn.Module):
         # get 4 coords of target boxes, related to grid_size. Shape: (num_num_target_box, 4).
         target_coords_grid_size = targets[:, 2:6] * grid_size
         # get each target_box's corresponding anchor_index, sample_index, grid_index_x, grid_index_y. They are all (num_target_box,) shaped.
-        _, anchor_index = torch.stack([bbox_wh_iou(anchor, target_coords_grid_size[:, 2:]) for anchor in self.anchors]).max(0)
+        _, anchor_index = torch.stack(
+            [bbox_wh_iou(anchor, target_coords_grid_size[:, 2:]) for anchor in self.anchors]).max(0)
         grid_index_x, grid_index_y = target_coords_grid_size[:, 0].long(), target_coords_grid_size[:, 1].long()
         sample_index = targets[:, 0].long()
         # while multi_target_to_one_anchor:
@@ -174,10 +176,11 @@ class RegionLayer(nn.Module):
         #                     conflicted_index_list.append([i, j])
         #                 # anchor_index[i] = torch.stack([bbox_wh_iou(anchor, target_coords_grid_size[:, 2:]) for anchor in self.anchors]).argsort(0)[-2][i]
 
-
         # compute the IoU between each target_box and its corresponding pred_box
         iou_target_pred = torch_float_tensor(num_samples, self.num_anchors, grid_size, grid_size).fill_(0)
-        iou_target_pred[sample_index, anchor_index, grid_index_y, grid_index_x] = bbox_iou(pred_coords_grid_size[sample_index, anchor_index, grid_index_y, grid_index_x], target_coords_grid_size, x1y1x2y2=False)
+        iou_target_pred[sample_index, anchor_index, grid_index_y, grid_index_x] = bbox_iou(
+            pred_coords_grid_size[sample_index, anchor_index, grid_index_y, grid_index_x], target_coords_grid_size,
+            x1y1x2y2=False)
 
         # ---- classification loss ---- #
         target_cls = torch_float_tensor(num_samples, self.num_anchors, grid_size, grid_size, self.num_classes).fill_(0)
@@ -194,10 +197,14 @@ class RegionLayer(nn.Module):
 
         # ---- coordinates loss ---- #
         target_coords_for_loss = torch_float_tensor(num_samples, self.num_anchors, grid_size, grid_size, 4).fill_(0)
-        target_coords_for_loss[sample_index, anchor_index, grid_index_y, grid_index_x, 0] = target_coords_grid_size[:, 0] - grid_index_x
-        target_coords_for_loss[sample_index, anchor_index, grid_index_y, grid_index_x, 1] = target_coords_grid_size[:, 1] - grid_index_y
-        target_coords_for_loss[sample_index, anchor_index, grid_index_y, grid_index_x, 2] = torch.log(target_coords_grid_size[:, 2] / self.anchors[anchor_index, 0])
-        target_coords_for_loss[sample_index, anchor_index, grid_index_y, grid_index_x, 3] = torch.log(target_coords_grid_size[:, 3] / self.anchors[anchor_index, 1])
+        target_coords_for_loss[sample_index, anchor_index, grid_index_y, grid_index_x, 0] = target_coords_grid_size[:,
+                                                                                            0] - grid_index_x
+        target_coords_for_loss[sample_index, anchor_index, grid_index_y, grid_index_x, 1] = target_coords_grid_size[:,
+                                                                                            1] - grid_index_y
+        target_coords_for_loss[sample_index, anchor_index, grid_index_y, grid_index_x, 2] = torch.log(
+            target_coords_grid_size[:, 2] / self.anchors[anchor_index, 0])
+        target_coords_for_loss[sample_index, anchor_index, grid_index_y, grid_index_x, 3] = torch.log(
+            target_coords_grid_size[:, 3] / self.anchors[anchor_index, 1])
 
         pred_coords_for_loss = torch_float_tensor(num_samples, self.num_anchors, grid_size, grid_size, 4)
         pred_coords_for_loss[..., 0] = torch.sigmoid(pred_tx)
@@ -206,17 +213,24 @@ class RegionLayer(nn.Module):
         pred_coords_for_loss[..., 3] = pred_th
         # the loss of coordinates is scaled upon the corresponded target_box's w and h.
         loss_coords_wh_scale = torch_float_tensor(num_samples, self.num_anchors, grid_size, grid_size)
-        loss_coords_wh_scale[sample_index, anchor_index, grid_index_y, grid_index_x] = 2 - target_coords_grid_size[:, 2] * target_coords_grid_size[:, 3] / (grid_size**2)
-        loss_coords = nn.MSELoss()(pred_coords_for_loss[target_mask] * loss_coords_wh_scale[target_mask].unsqueeze(-1) ** 0.5, target_coords_for_loss[target_mask] * loss_coords_wh_scale[target_mask].unsqueeze(-1) ** 0.5) * self.coord_scale # 1/n*s*(a-b)^2 == 1/n*(a*s^(0.5)-b*s^(0.5))^2
+        loss_coords_wh_scale[sample_index, anchor_index, grid_index_y, grid_index_x] = 2 - target_coords_grid_size[:,
+                                                                                           2] * target_coords_grid_size[
+                                                                                                :, 3] / (grid_size ** 2)
+        loss_coords = nn.MSELoss()(
+            pred_coords_for_loss[target_mask] * loss_coords_wh_scale[target_mask].unsqueeze(-1) ** 0.5,
+            target_coords_for_loss[target_mask] * loss_coords_wh_scale[target_mask].unsqueeze(
+                -1) ** 0.5) * self.coord_scale  # 1/n*s*(a-b)^2 == 1/n*(a*s^(0.5)-b*s^(0.5))^2
 
         # ---- noobject loss ---- #
         noobject_mask = ~target_mask
         # Set noobject_mask to zero where iou of pred_box and any target box exceeds threshold
         for target_coords_grid_size_i in target_coords_grid_size:
-            target_coords_grid_size_i_for_iou = target_coords_grid_size_i.repeat(num_samples, self.num_anchors, grid_size, grid_size, 1)
+            target_coords_grid_size_i_for_iou = target_coords_grid_size_i.repeat(num_samples, self.num_anchors,
+                                                                                 grid_size, grid_size, 1)
             pred_coords_ious = bbox_iou(pred_coords_grid_size, target_coords_grid_size_i_for_iou, x1y1x2y2=False)
             noobject_mask[pred_coords_ious > self.thresh] = False
-        loss_noobject = nn.MSELoss()(pred_conf[noobject_mask], torch_float_tensor(pred_conf[noobject_mask].shape).fill_(0)) * self.noobject_scale
+        loss_noobject = nn.MSELoss()(pred_conf[noobject_mask],
+                                     torch_float_tensor(pred_conf[noobject_mask].shape).fill_(0)) * self.noobject_scale
 
         # ---- prior loss ---- #
         if seen < 12800:
@@ -235,8 +249,12 @@ class RegionLayer(nn.Module):
         obj_conf = pred_conf[target_mask].mean()
         conf_noobj = pred_conf[noobject_mask].mean()
         conf_over_50 = pred_conf > 0.5
-        correct_detect_over_50_iou = correct_cls & (iou_target_pred[sample_index, anchor_index, grid_index_y, grid_index_x] > 0.5) & (pred_conf[sample_index, anchor_index, grid_index_y, grid_index_x] > 0.5)
-        correct_detect_over_75_iou = correct_cls & (iou_target_pred[sample_index, anchor_index, grid_index_y, grid_index_x] > 0.75) & (pred_conf[sample_index, anchor_index, grid_index_y, grid_index_x] > 0.5)
+        correct_detect_over_50_iou = correct_cls & (
+                    iou_target_pred[sample_index, anchor_index, grid_index_y, grid_index_x] > 0.5) & (pred_conf[
+                                                                                                          sample_index, anchor_index, grid_index_y, grid_index_x] > 0.5)
+        correct_detect_over_75_iou = correct_cls & (
+                    iou_target_pred[sample_index, anchor_index, grid_index_y, grid_index_x] > 0.75) & (pred_conf[
+                                                                                                           sample_index, anchor_index, grid_index_y, grid_index_x] > 0.5)
         precision = torch.sum(correct_detect_over_50_iou) / (conf_over_50.sum() + 1e-16)
         recall50 = torch.sum(correct_detect_over_50_iou) / (target_mask.sum() + 1e-16)
         recall75 = torch.sum(correct_detect_over_75_iou) / (target_mask.sum() + 1e-16)
@@ -351,7 +369,7 @@ class RegionLayer_deprecated(nn.Module):
             self.object_scale = noobj_mask.sum() / obj_mask.sum()
             loss_conf_obj = self.object_scale * nn.MSELoss()(pred_conf[obj_mask], tconf[obj_mask])
             loss_conf_noobj = self.noobject_scale * nn.MSELoss()(pred_conf[noobj_mask],
-                                                                                tconf[noobj_mask])
+                                                                 tconf[noobj_mask])
             loss_cls = self.class_scale * nn.BCELoss()(pred_cls[obj_mask], tcls[obj_mask])
             total_loss = loss_coord + loss_conf_obj + loss_conf_noobj + loss_cls
 

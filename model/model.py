@@ -25,7 +25,7 @@ class YOLOv2Model(object):
                                        lr=self.learning_rate,
                                        momentum=0.9,
                                        weight_decay=0.0005)
-            self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, [320, 350], 0.1)
+            self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, [150, 300], 0.1)
 
     def detect(self, img_path):
         self.network.eval()
@@ -82,14 +82,14 @@ class YOLOv2Model(object):
                                    self.network.module_list[-1].metrics)
 
             self.scheduler.step()
-            if epoch % self.cfg.SAVE_INTERVAL == self.cfg.SAVE_INTERVAL - 1:
+            if epoch % self.cfg.SAVE_INTERVAL == 0 or epoch == 1:
                 epoch_save_weights_fname = f'{self.save_weights_fname_prefix}-{epoch}.weights'
                 self.network.save_weights(epoch_save_weights_fname)
-            if epoch % self.cfg.EVAL_INTERVAL == self.cfg.EVAL_INTERVAL - 1:
+            if epoch % self.cfg.EVAL_INTERVAL == 0 or epoch == 1:
                 self.eval(eval_dataloader)
 
-        if total_epochs % self.cfg.SAVE_INTERVAL == self.cfg.SAVE_INTERVAL - 1:
+        if total_epochs % self.cfg.SAVE_INTERVAL != 0:
             epoch_save_weights_fname = self.save_weights_fname_prefix + str(total_epochs) + '.weights'
             self.network.save_weights(epoch_save_weights_fname)
-        if total_epochs % self.cfg.EVAL_INTERVAL == self.cfg.EVAL_INTERVAL - 1:
+        if total_epochs % self.cfg.EVAL_INTERVAL != 0:
             self.eval(eval_dataloader)

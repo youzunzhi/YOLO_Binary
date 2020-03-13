@@ -3,9 +3,9 @@ import torch
 
 _C = CN()
 _C.OUTPUT_DIR = 'runs/'
-_C.EXPERIMENT_NAME = 'tiny_voc_scratch'
+_C.EXPERIMENT_NAME = 'trained-v0'
 _C.CUDA_ID = '0'
-_C.EVAL_INTERVAL = 500
+_C.EVAL_INTERVAL = 5
 _C.SAVE_INTERVAL = 5
 
 train_on = 'voc'
