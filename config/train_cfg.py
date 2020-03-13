@@ -8,6 +8,9 @@ _C.CUDA_ID = '0'
 _C.EVAL_INTERVAL = 5
 _C.SAVE_INTERVAL = 5
 
+_C.CONF_THRESH = 0.005
+_C.NMS_THRESH = 0.45
+
 train_on = 'voc'
 if train_on == 'coco':
     _C.MODEL_CFG_FNAME = "pjreddie_files/yolov2.cfg"
@@ -18,10 +21,7 @@ elif train_on == 'voc':
 _C.WEIGHTS_FNAME = "weights/yolov2-tiny-voc.weights"
 # _C.WEIGHTS_FNAME = "weights/yolov2.weights"
 # _C.WEIGHTS_FNAME = "no"
-_C.CONF_THRESH = 0.005
-_C.NMS_THRESH = 0.45
-_C.EVAL_INTERNAL = 100
-_C.SAVE_INTERNAL = 50
+
 
 _C.DATA = CN()
 if train_on == 'coco':
