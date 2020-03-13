@@ -10,9 +10,9 @@ class YOLOv2Network(nn.Module):
         super(YOLOv2Network, self).__init__()
         self.use_cuda = use_cuda
         self.hyper_parameters, self.module_list = self.get_module_list(model_cfg_fname)
+        self.seen = 0
         if not os.path.exists(weights_fname):
             print(f"{weights_fname} not exists")
-            self.seen = 0
             self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
         else:
             self.load_weights(weights_fname)
@@ -35,7 +35,7 @@ class YOLOv2Network(nn.Module):
         with open(weights_fname, "rb") as f:
             header = np.fromfile(f, dtype=np.int32, count=4)  # First four are header values
             self.header_info = header  # Needed to write header when saving weights
-            self.seen = header[3]  # number of images seen during training
+            # self.seen = header[3]  # number of images seen during training
             weights = np.fromfile(f, dtype=np.float32)  # The rest are weights
 
         # Establish cutoff for loading backbone weights
