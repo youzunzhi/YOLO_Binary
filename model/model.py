@@ -60,6 +60,7 @@ class YOLOv2Model(object):
     def train(self, train_dataloader, eval_dataloader):
         total_epochs = self.cfg.TRAIN.TOTAL_EPOCHS
         self.network.train()
+
         for epoch in range(1, total_epochs+1):
             start_time = time.time()
             for batch_i, (imgs, targets, img_paths) in enumerate(train_dataloader):

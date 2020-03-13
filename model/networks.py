@@ -93,7 +93,7 @@ class YOLOv2Network(nn.Module):
                 for module_i, module in enumerate(layer):
                     if isinstance(module, nn.Conv2d):
                         conv_layer = module
-                        if not isinstance(layer[module_i+1], nn.BatchNorm2d):
+                        if module_i+1 >= len(layer) or not isinstance(layer[module_i+1], nn.BatchNorm2d):
                             conv_layer.bias.data.cpu().numpy().tofile(fp)
                             conv_layer.weight.data.cpu().numpy().tofile(fp)
 
